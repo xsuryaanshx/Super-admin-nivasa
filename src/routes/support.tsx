@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Topbar } from "@/components/layout/Topbar";
 import { GlassPanel } from "@/components/ui-fx/GlassPanel";
-import { tickets, type SupportTicket } from "@/lib/mock-data";
+import { type SupportTicket } from "@/lib/mock-data";
+import { useSupportTickets } from "@/lib/supabase-data";
 import { toCSV, downloadCSV } from "@/lib/csv";
-import { LifeBuoy, AlertOctagon, Clock, CheckCircle2, Filter, Download } from "lucide-react";
+import { LifeBuoy, AlertOctagon, Clock, CheckCircle2, Filter, Download, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/support")({
   head: () => ({ meta: [{ title: "Support Center · Nivasa Admin" }] }),
@@ -17,6 +18,7 @@ const priorityColor = { P1: "var(--rose)", P2: "var(--amber)", P3: "var(--cyan)"
 const statusColor = { open: "var(--amber)", "in-progress": "var(--cyan)", resolved: "var(--emerald)" } as const;
 
 function SupportPage() {
+  const { data: tickets = [], isLoading } = useSupportTickets();
   const [statusFilter, setStatusFilter] = useState<"all" | SupportTicket["status"]>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | SupportTicket["priority"]>("all");
 
@@ -27,7 +29,7 @@ function SupportPage() {
           (statusFilter === "all" || t.status === statusFilter) &&
           (priorityFilter === "all" || t.priority === priorityFilter),
       ),
-    [statusFilter, priorityFilter],
+    [tickets, statusFilter, priorityFilter],
   );
 
   const open = tickets.filter((t) => t.status !== "resolved").length;
@@ -43,7 +45,7 @@ function SupportPage() {
           { l: "Open tickets", v: open, i: LifeBuoy, c: "var(--cyan)" },
           { l: "P1 escalations", v: p1, i: AlertOctagon, c: "var(--rose)" },
           { l: "Avg first response", v: "12m", i: Clock, c: "var(--amber)" },
-          { l: "Resolved (7d)", v: resolved + 18, i: CheckCircle2, c: "var(--emerald)" },
+          { l: "Resolved (7d)", v: resolved, i: CheckCircle2, c: "var(--emerald)" },
         ].map((m, i) => (
           <motion.div
             key={m.l}
@@ -106,56 +108,63 @@ function SupportPage() {
       </GlassPanel>
 
       <GlassPanel title={`Active tickets · ${filtered.length}`} delay={0.2}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                <th className="text-left font-medium py-2 pr-3">Ticket</th>
-                <th className="text-left font-medium py-2 pr-3">Subject</th>
-                <th className="text-left font-medium py-2 pr-3">Landlord</th>
-                <th className="text-left font-medium py-2 pr-3">Priority</th>
-                <th className="text-left font-medium py-2 pr-3">Status</th>
-                <th className="text-left font-medium py-2 pr-3">Agent</th>
-                <th className="text-left font-medium py-2">Age</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                    No tickets match these filters.
-                  </td>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading tickets…</span>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="text-left font-medium py-2 pr-3">Ticket</th>
+                  <th className="text-left font-medium py-2 pr-3">Subject</th>
+                  <th className="text-left font-medium py-2 pr-3">Landlord</th>
+                  <th className="text-left font-medium py-2 pr-3">Priority</th>
+                  <th className="text-left font-medium py-2 pr-3">Status</th>
+                  <th className="text-left font-medium py-2 pr-3">Agent</th>
+                  <th className="text-left font-medium py-2">Age</th>
                 </tr>
-              )}
-              {filtered.map((t, i) => (
-                <motion.tr
-                  key={t.id}
-                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.25 + i * 0.04 }}
-                  className="border-t border-white/5 hover:bg-white/[0.02]"
-                >
-                  <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">{t.id}</td>
-                  <td className="py-3 pr-3">{t.subject}</td>
-                  <td className="py-3 pr-3 text-muted-foreground">{t.landlord}</td>
-                  <td className="py-3 pr-3">
-                    <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full"
-                          style={{ background: `${priorityColor[t.priority]}20`, color: priorityColor[t.priority] }}>
-                      {t.priority}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-3">
-                    <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full"
-                          style={{ background: `${statusColor[t.status]}20`, color: statusColor[t.status] }}>
-                      {t.status}
-                    </span>
-                  </td>
-                  <td className="py-3 pr-3 text-muted-foreground">{t.agent}</td>
-                  <td className="py-3 text-muted-foreground">{t.age}</td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                      No tickets found.
+                    </td>
+                  </tr>
+                )}
+                {filtered.map((t, i) => (
+                  <motion.tr
+                    key={t.id}
+                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 + i * 0.04 }}
+                    className="border-t border-white/5 hover:bg-white/[0.02]"
+                  >
+                    <td className="py-3 pr-3 font-mono text-xs text-muted-foreground">{t.id}</td>
+                    <td className="py-3 pr-3">{t.subject}</td>
+                    <td className="py-3 pr-3 text-muted-foreground">{t.landlord}</td>
+                    <td className="py-3 pr-3">
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full"
+                            style={{ background: `${priorityColor[t.priority]}20`, color: priorityColor[t.priority] }}>
+                        {t.priority}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3">
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full"
+                            style={{ background: `${statusColor[t.status]}20`, color: statusColor[t.status] }}>
+                        {t.status}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-3 text-muted-foreground">{t.agent}</td>
+                    <td className="py-3 text-muted-foreground">{t.age}</td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </GlassPanel>
     </div>
   );
