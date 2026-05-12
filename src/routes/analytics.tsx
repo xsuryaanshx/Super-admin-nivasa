@@ -2,7 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Topbar } from "@/components/layout/Topbar";
 import { GlassPanel } from "@/components/ui-fx/GlassPanel";
-import { landlordGrowth, occupancyByCity, planDistribution, revenueSeries } from "@/lib/mock-data";
+import {
+  useLandlordGrowth,
+  useOccupancyByCity,
+  usePlanDistribution,
+  useRevenueSeries,
+} from "@/lib/supabase-data";
 import {
   Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid,
   RadialBar, RadialBarChart, PolarAngleAxis, Bar, BarChart,
@@ -16,6 +21,11 @@ export const Route = createFileRoute("/analytics")({
 const COLORS = ["#00D1FF", "#7C3AED", "#10B981", "#2563EB"];
 
 function AnalyticsPage() {
+  const { data: landlordGrowth = [] } = useLandlordGrowth();
+  const { data: occupancyByCity = [] } = useOccupancyByCity();
+  const { data: planDistribution = [] } = usePlanDistribution();
+  const { data: revenueSeries = [] } = useRevenueSeries();
+
   return (
     <div className="space-y-6">
       <Topbar title="Platform Analytics" subtitle="Intelligence center · live signals across the Nivasa network" />
@@ -49,8 +59,13 @@ function AnalyticsPage() {
         <GlassPanel title="Plan distribution" delay={0.1}>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart innerRadius="30%" outerRadius="100%" data={planDistribution.map((p, i) => ({ ...p, fill: COLORS[i] }))}>
-                <PolarAngleAxis type="number" domain={[0, Math.max(...planDistribution.map(p => p.count)) * 1.2]} tick={false} />
+              <RadialBarChart innerRadius="30%" outerRadius="100%"
+                data={planDistribution.map((p, i) => ({ ...p, fill: COLORS[i] }))}>
+                <PolarAngleAxis
+                  type="number"
+                  domain={[0, Math.max(...planDistribution.map(p => p.count), 1) * 1.2]}
+                  tick={false}
+                />
                 <RadialBar dataKey="count" background={{ fill: "oklch(1 0 0 / 4%)" }} cornerRadius={8} />
                 <Tooltip contentStyle={{ background: "oklch(0.13 0.012 250 / 95%)", border: "1px solid oklch(1 0 0 / 12%)", borderRadius: 12, fontSize: 12 }} />
               </RadialBarChart>
@@ -68,26 +83,28 @@ function AnalyticsPage() {
         </GlassPanel>
       </div>
 
-      <GlassPanel title="Occupancy heatmap by city" delay={0.15}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {occupancyByCity.map((c, i) => (
-            <motion.div
-              key={c.city}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.04 }}
-              className="relative rounded-2xl p-4 overflow-hidden"
-              style={{
-                background: `linear-gradient(135deg, oklch(0.82 0.17 215 / ${c.occupancy / 100 * 0.4}), oklch(0.55 0.25 295 / ${c.occupancy / 100 * 0.3}))`,
-                boxShadow: `inset 0 0 0 1px oklch(0.82 0.17 215 / ${c.occupancy / 100 * 0.5})`,
-              }}
-            >
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">{c.city}</div>
-              <div className="text-3xl font-display font-semibold mt-1">{c.occupancy}%</div>
-              <div className="text-xs text-muted-foreground mt-1">{c.buildings} buildings</div>
-            </motion.div>
-          ))}
-        </div>
-      </GlassPanel>
+      {occupancyByCity.length > 0 && (
+        <GlassPanel title="Occupancy heatmap by city" delay={0.15}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {occupancyByCity.map((c, i) => (
+              <motion.div
+                key={c.city}
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.04 }}
+                className="relative rounded-2xl p-4 overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, oklch(0.82 0.17 215 / ${c.occupancy / 100 * 0.4}), oklch(0.55 0.25 295 / ${c.occupancy / 100 * 0.3}))`,
+                  boxShadow: `inset 0 0 0 1px oklch(0.82 0.17 215 / ${c.occupancy / 100 * 0.5})`,
+                }}
+              >
+                <div className="text-xs text-muted-foreground uppercase tracking-wider">{c.city}</div>
+                <div className="text-3xl font-display font-semibold mt-1">{c.occupancy}%</div>
+                <div className="text-xs text-muted-foreground mt-1">{c.buildings} buildings</div>
+              </motion.div>
+            ))}
+          </div>
+        </GlassPanel>
+      )}
 
       <GlassPanel title="Churn signal — last 12 months" delay={0.2}>
         <div className="h-56 -ml-2">
