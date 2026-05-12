@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Topbar } from "@/components/layout/Topbar";
 import { GlassPanel } from "@/components/ui-fx/GlassPanel";
-import { tiers, landlords, revenueSeries } from "@/lib/mock-data";
+import { tiers } from "@/lib/mock-data";
+import { useLandlords, useRevenueSeries } from "@/lib/supabase-data";
 import { Check, AlertTriangle, RefreshCw } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 
@@ -12,6 +13,9 @@ export const Route = createFileRoute("/subscriptions")({
 });
 
 function SubsPage() {
+  const { data: landlords = [] } = useLandlords();
+  const { data: revenueSeries = [] } = useRevenueSeries();
+
   const failed = landlords.filter((l) => l.paymentStatus === "failed");
   const pending = landlords.filter((l) => l.paymentStatus === "pending");
 
@@ -80,11 +84,13 @@ function SubsPage() {
           <div className="space-y-3">
             <Row icon={<AlertTriangle className="h-4 w-4" />} color="var(--rose)" label="Failed payments" value={failed.length.toString()} />
             <Row icon={<RefreshCw className="h-4 w-4" />} color="var(--amber)" label="Retry pending" value={pending.length.toString()} />
-            <Row icon={<Check className="h-4 w-4" />} color="var(--emerald)" label="Auto-renewed (30d)" value={(landlords.length - failed.length).toString()} />
+            <Row icon={<Check className="h-4 w-4" />} color="var(--emerald)" label="Active accounts" value={(landlords.length - failed.length).toString()} />
           </div>
-          <div className="mt-4 text-xs text-muted-foreground">
-            Recommendation: 8 Scale tier landlords are nearing usage limits — Enterprise upsell could lift MRR by ₹1.7L.
-          </div>
+          {landlords.length > 0 && (
+            <div className="mt-4 text-xs text-muted-foreground">
+              {landlords.filter(l => l.plan === "Scale").length} Scale tier landlords — consider Enterprise upsell opportunities.
+            </div>
+          )}
         </GlassPanel>
       </div>
     </div>
