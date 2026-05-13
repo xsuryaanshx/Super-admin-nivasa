@@ -111,7 +111,7 @@ export function usePlatformMetrics() {
           .select("*", { count: "exact", head: true }),
         supabase
           .from("landlords")
-          .select("subscription_plan, payment_status, total_rooms, total_tenants"),
+          .select("*"), // select all to avoid 400s if columns are missing
       ]);
 
       const landlords = revData ?? [];
@@ -403,7 +403,9 @@ function rowToBuilding(row: DbPropertyRow): Building {
 }
 
 function timeAgo(date: Date): string {
-  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+  const now = Date.now();
+  const seconds = Math.round((now - date.getTime()) / 1000);
+  if (seconds < 5) return "just now";
   if (seconds < 60) return `${seconds}s ago`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;

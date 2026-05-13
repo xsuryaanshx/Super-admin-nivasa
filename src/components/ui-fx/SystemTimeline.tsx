@@ -38,16 +38,20 @@ function fmt(ts: number) {
 }
 
 export function SystemTimeline() {
-  const [events, setEvents] = useState<TLEvent[]>(() =>
-    seedEvents.slice(0, 5).map((e, i) => ({
-      ...e,
-      id: `tl-${Date.now()}-${i}`,
-      ts: Date.now() - (5 - i) * 9000,
-    })),
-  );
+  const [events, setEvents] = useState<TLEvent[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Initial population
+    setEvents(
+      seedEvents.slice(0, 5).map((e, i) => ({
+        ...e,
+        id: `tl-${Date.now()}-${i}`,
+        ts: Date.now() - (5 - i) * 9000,
+      })),
+    );
+
     let i = 0;
     const id = setInterval(() => {
       i = (i + 1) % seedEvents.length;
